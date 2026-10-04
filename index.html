@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#435794">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Badplaner">
+<link rel="apple-touch-icon" href="logo.jpg">
+<title>Schaefer Badplaner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: Kopfzeile mit Logo, darunter eine Ansicht pro Arbeitsschritt (Projekte → Fotos → Gestalten → Vorher/Nachher) */
+:root{
+  --blau:#435794; --blau-tief:#2f3f73; --welle:#5aa9dc; --weiss:#ffffff; --grund:#f4f7fc; --tinte:#1d2a4d; --grau:#5d6a88;
+  --linie:#d5ddef; --feld:#f3f6fc; --ok:#1f8a4c; --warn:#b97a08; --fehler:#c2392b;
+  --f-display:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--grund);color:var(--tinte);font-family:var(--f-body);font-size:16px;line-height:1.5;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+[hidden]{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+header.kopf{background:var(--weiss);border-bottom:3px solid var(--blau);position:sticky;top:0;z-index:20;padding-top:env(safe-area-inset-top,0px)}
+.kopf-in{max-width:1200px;margin:0 auto;padding:8px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.kopf img{height:52px;width:auto;display:block}
+.kopf .titel{font-family:var(--f-display);font-weight:700;font-size:1.35rem;color:var(--blau);letter-spacing:.02em;margin-right:auto}
+.kopf nav{display:flex;gap:6px;flex-wrap:wrap}
+main{max-width:1200px;margin:0 auto;padding-inline:16px;padding-block:20px 60px}
+h1,h2,h3{font-family:var(--f-display);color:var(--blau-tief);margin:0;text-wrap:balance}
+h1{font-size:clamp(1.6rem,3.4vw,2.2rem);font-weight:700}
+h2{font-size:1.35rem;font-weight:600}
+h3{font-size:1.1rem;font-weight:600}
+.leise{color:var(--grau);font-size:.9rem}
+.karte{background:var(--weiss);border:1px solid var(--linie);border-radius:10px;padding:16px}
+.stapel{display:flex;flex-direction:column;gap:14px}
+.zeile{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn{border:1px solid var(--blau);background:var(--weiss);color:var(--blau);border-radius:8px;padding:10px 16px;min-height:46px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;justify-content:center}
+.btn.primär{background:var(--blau);color:var(--weiss)}
+.btn.klein{min-height:38px;padding:6px 12px;font-size:.9rem}
+.btn.text{border-color:transparent;background:transparent}
+.btn:disabled{opacity:.5;cursor:default}
+.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--welle);outline-offset:2px}
+label.feld{display:flex;flex-direction:column;gap:4px;font-size:.85rem;font-weight:500;color:var(--grau);min-width:0}
+input[type=text],input[type=email],input[type=password],input[type=number],select,textarea{background:var(--feld);border:1px solid var(--linie);border-radius:8px;padding:10px 12px;min-height:46px;width:100%;font-size:1rem;color:var(--tinte)}
+textarea{min-height:90px;resize:vertical}
+.raster{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+.projekt{cursor:pointer;text-align:left;width:100%}
+.projekt b{display:block;font-size:1.05rem}
+.fotos{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.foto{position:relative;border-radius:8px;overflow:hidden;border:3px solid transparent;cursor:pointer;background:var(--linie);aspect-ratio:4/3;padding:0}
+.foto img{width:100%;height:100%;object-fit:cover;display:block}
+.foto[aria-pressed="true"]{border-color:var(--blau)}
+.foto .marke{position:absolute;left:6px;top:6px;background:var(--blau);color:var(--weiss);font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.06em}
+.layout{display:grid;gap:18px;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+@media (max-width:900px){.layout{grid-template-columns:minmax(0,1fr)}}
+.stufen{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.stufe{border:1px solid var(--linie);background:var(--feld);border-radius:8px;padding:8px 6px;min-height:58px;cursor:pointer;text-align:center;line-height:1.2}
+.stufe b{display:block;font-family:var(--f-display);font-size:1.1rem}
+.stufe span{font-size:.8rem;color:var(--grau)}
+.stufe[aria-pressed="true"]{background:var(--blau);border-color:var(--blau);color:var(--weiss)}
+.stufe[aria-pressed="true"] span{color:#dbe4f6}
+.produkte{display:flex;flex-direction:column;gap:2px}
+.prod{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 4px;border-bottom:1px solid var(--linie)}
+.prod input{width:22px;height:22px;accent-color:var(--blau)}
+.prod .kat{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--grau)}
+.prod .preis{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:500}
+.prod .fehlt{color:var(--warn);font-size:.85rem}
+.summe{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-variant-numeric:tabular-nums}
+.summe dt{color:var(--grau)} .summe dd{margin:0;text-align:right}
+.summe .gross{font-family:var(--f-display);font-size:1.6rem;font-weight:700;color:var(--blau-tief)}
+.hinweis{background:#eef3fb;border-left:4px solid var(--welle);padding:10px 12px;border-radius:6px;font-size:.9rem}
+.fehler{background:#fcecea;border-left:4px solid var(--fehler);padding:10px 12px;border-radius:6px;font-size:.92rem}
+.lädt{display:inline-block;width:18px;height:18px;border:3px solid currentColor;border-right-color:transparent;border-radius:50%;animation:dreh 1s linear infinite}
+@keyframes dreh{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.lädt{animation-duration:3s}}
+/* Vorher/Nachher-Vergleich */
+.vergleich{position:relative;width:100%;border-radius:10px;overflow:hidden;background:#000;user-select:none;touch-action:pan-y}
+.vergleich img{display:block;width:100%;height:auto}
+.vergleich .oben{position:absolute;inset:0;overflow:hidden;width:50%}
+.vergleich .oben img{width:auto;height:100%;max-width:none}
+.vergleich .griff{position:absolute;top:0;bottom:0;left:50%;width:3px;background:var(--weiss);transform:translateX(-1px);pointer-events:none}
+.vergleich .griff::after{content:"◀ ▶";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--weiss);color:var(--blau);font-size:.8rem;padding:8px 10px;border-radius:999px;white-space:nowrap;box-shadow:0 1px 6px rgba(0,0,0,.3)}
+.vergleich .lbl{position:absolute;bottom:10px;background:rgba(29,42,77,.8);color:var(--weiss);font-size:.8rem;padding:3px 10px;border-radius:999px}
+.vergleich input[type=range]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;margin:0}
+.ergebnisse{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+table.liste{width:100%;border-collapse:collapse;font-size:.92rem}
+table.liste th,table.liste td{padding:8px 6px;border-bottom:1px solid var(--linie);text-align:left;vertical-align:middle}
+table.liste input[type=number]{min-height:38px;width:110px;padding:6px 8px}
+.tabwrap{overflow-x:auto}
+.mini{width:56px;height:56px;object-fit:cover;border-radius:6px;background:var(--linie);display:block}
+footer.fuss{max-width:1200px;margin:0 auto;padding:0 16px 30px;font-size:.78rem;color:var(--grau)}
+</style>
+</head>
+<body>
+<header class="kopf"><div class="kopf-in">
+  <img src="logo.jpg" alt="Schaefer Haustechnik">
+  <div class="titel">Badplaner</div>
+  <nav id="nav" hidden>
+    <button class="btn klein text" data-geh="projekte">Projekte</button>
+    <button class="btn klein text" data-geh="produkte">Produkte &amp; Preise</button>
+    <button class="btn klein text" id="abmelden">Abmelden</button>
+  </nav>
+</div></header>
+
+<main id="app">
+  <p class="leise">Lädt …</p>
+</main>
+<footer class="fuss">Die Bilder sind KI-Visualisierungen zur Orientierung, keine maßstäbliche Planung. Preise ohne Gewähr.</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+<script>
+const SUPABASE_URL = "https://udkvxnzccoyoaizaqqwk.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVka3Z4bnpjY295b2FpemFxcXdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2MjY4NjIsImV4cCI6MjA5OTIwMjg2Mn0.EBORTtkeNmglUY12Jx0bF74ZcDvGSwKqekmwxFFttRo";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const KAT = {wc:"WC",waschtisch:"Waschtisch",waschtischarmatur:"Waschtischarmatur",duschsystem:"Duschsystem",duscharmatur:"Duscharmatur",duschwanne:"Duschwanne",duschabtrennung:"Duschabtrennung",badewanne:"Badewanne",wannenarmatur:"Wannenarmatur",badmoebel:"Badmöbel",spiegel:"Spiegel",zubehoer:"Zubehör"};
+const KAT_ORDER = Object.keys(KAT);
+const STUFEN = ["basis","komfort","premium"];
+const ASPECTS = [["1:1",1],["4:3",4/3],["3:4",3/4],["3:2",3/2],["2:3",2/3],["16:9",16/9],["9:16",9/16],["5:4",5/4],["4:5",4/5]];
+
+const S = { user:null, projekte:[], projekt:null, bilder:[], urls:{}, produkte:[], einst:{}, auswahlFoto:null, stufe:"komfort", haken:{}, wunsch:"", groesse:"1K", busy:false, fehler:"" };
+const app = document.getElementById("app");
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const eur = v => v==null ? "–" : Number(v).toLocaleString("de-DE",{style:"currency",currency:"EUR",maximumFractionDigits:0});
+const datum = d => new Date(d).toLocaleDateString("de-DE");
+
+function setFehler(m){ S.fehler = m || ""; }
+async function lade(fn){ try{ setFehler(""); return await fn(); } catch(e){ setFehler(e.message || String(e)); render(); } }
+
+/* ---------- Anmeldung ---------- */
+function renderLogin(modus="login", info=""){
+  document.getElementById("nav").hidden = true;
+  app.innerHTML = `
+  <div class="karte stapel" style="max-width:440px;margin:30px auto">
+    <h1>${modus==="login"?"Anmelden":"Konto anlegen"}</h1>
+    ${info?`<div class="hinweis">${esc(info)}</div>`:""}
+    ${S.fehler?`<div class="fehler">${esc(S.fehler)}</div>`:""}
+    <form id="loginForm" class="stapel">
+      <label class="feld" for="em">E-Mail<input type="email" id="em" required autocomplete="email"></label>
+      <label class="feld" for="pw">Passwort<input type="password" id="pw" required minlength="8" autocomplete="${modus==="login"?"current-password":"new-password"}"></label>
+      <button class="btn primär" type="submit">${modus==="login"?"Anmelden":"Konto anlegen"}</button>
+    </form>
+    <button class="btn text" id="wechsel">${modus==="login"?"Noch kein Konto? Konto anlegen":"Schon ein Konto? Anmelden"}</button>
+  </div>`;
+  document.getElementById("wechsel").onclick = () => { setFehler(""); renderLogin(modus==="login"?"neu":"login"); };
+  document.getElementById("loginForm").onsubmit = async e => {
+    e.preventDefault();
+    const email = document.getElementById("em").value.trim(), password = document.getElementById("pw").value;
+    setFehler("");
+    if(modus==="login"){
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if(error){ setFehler(error.message==="Invalid login credentials"?"E-Mail oder Passwort stimmt nicht. Falls du das Konto gerade angelegt hast: erst den Link in der Bestätigungs-Mail antippen.":error.message); renderLogin(modus); }
+    } else {
+      const { error } = await sb.auth.signUp({ email, password, options:{ emailRedirectTo: location.href.split("#")[0] } });
+      if(error){ setFehler(error.message); renderLogin(modus); }
+      else renderLogin("login","Konto angelegt. Bitte den Link in der Bestätigungs-Mail antippen, danach hier anmelden.");
+    }
+  };
+}
+
+/* ---------- Daten ---------- */
+async function ladeStamm(){
+  const [{data:prod,error:e1},{data:ein,error:e2}] = await Promise.all([
+    sb.from("bad_produkte").select("*").eq("aktiv",true),
+    sb.from("bad_einstellungen").select("*")
+  ]);
+  if(e1) throw e1; if(e2) throw e2;
+  S.produkte = (prod||[]).sort((a,b)=>KAT_ORDER.indexOf(a.kategorie)-KAT_ORDER.indexOf(b.kategorie));
+  S.einst = Object.fromEntries((ein||[]).map(r=>[r.stufe,r]));
+}
+async function ladeProjekte(){
+  const { data, error } = await sb.from("bad_projekte").select("*").order("erstellt_am",{ascending:false});
+  if(error) throw error; S.projekte = data||[];
+}
+async function ladeBilder(){
+  const { data, error } = await sb.from("bad_bilder").select("*").eq("projekt_id",S.projekt.id).order("erstellt_am");
+  if(error) throw error; S.bilder = data||[];
+  const fehlend = S.bilder.map(b=>b.storage_pfad).filter(p=>!S.urls[p]);
+  if(fehlend.length){
+    const { data:u } = await sb.storage.from("bad-fotos").createSignedUrls(fehlend, 3600*6);
+    (u||[]).forEach(x=>{ if(x.signedUrl) S.urls[x.path]=x.signedUrl; });
+  }
+}
+async function produktBildUrls(){
+  const pfade = S.produkte.map(p=>p.bild_pfad).filter(p=>p && !S.urls["p:"+p]);
+  if(!pfade.length) return;
+  const { data } = await sb.storage.from("bad-produktbilder").createSignedUrls(pfade, 3600*6);
+  (data||[]).forEach(x=>{ if(x.signedUrl) S.urls["p:"+x.path]=x.signedUrl; });
+}
+
+/* ---------- Bild verkleinern ---------- */
+function verkleinere(file, max=2048){
+  return new Promise((ok,nok)=>{
+    const img = new Image();
+    img.onload = () => {
+      const f = Math.min(1, max/Math.max(img.width,img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width*f); c.height = Math.round(img.height*f);
+      c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+      c.toBlob(b=> b?ok({blob:b,w:c.width,h:c.height}):nok(new Error("Bild konnte nicht umgewandelt werden")),"image/jpeg",0.86);
+      URL.revokeObjectURL(img.src);
+    };
+    img.onerror = () => nok(new Error("Dieses Bildformat kann der Browser nicht lesen. Bitte als JPEG aufnehmen."));
+    img.src = URL.createObjectURL(file);
+  });
+}
+function passendesFormat(w,h){
+  const r = w/h; let best = ASPECTS[0];
+  for(const a of ASPECTS) if(Math.abs(Math.log(a[1]/r)) < Math.abs(Math.log(best[1]/r))) best = a;
+  return best[0];
+}
+
+/* ---------- Ansichten ---------- */
+let ansicht = "projekte";
+function geh(a){ ansicht = a; render(); window.scrollTo(0,0); }
+document.querySelectorAll("[data-geh]").forEach(b=>b.onclick=()=>{ if(b.dataset.geh==="projekte") S.projekt=null; geh(b.dataset.geh); });
+document.getElementById("abmelden").onclick = async()=>{ await sb.auth.signOut(); };
+
+function render(){
+  if(!S.user) return renderLogin();
+  document.getElementById("nav").hidden = false;
+  if(ansicht==="produkte") return renderProdukte();
+  if(S.projekt) return renderProjekt();
+  renderProjekte();
+}
+
+function renderProjekte(){
+  app.innerHTML = `
+  <div class="stapel">
+    <h1>Kundenprojekte</h1>
+    ${S.fehler?`<div class="fehler">${esc(S.fehler)}</div>`:""}
+    <form id="neu" class="karte zeile" autocomplete="off">
+      <label class="feld" for="kunde" style="flex:2 1 220px">Kunde<input type="text" id="kunde" required placeholder="z. B. Familie Meyer"></label>
+      <label class="feld" for="ort" style="flex:1 1 160px">Ort<input type="text" id="ort" placeholder="z. B. Amelinghausen"></label>
+      <button class="btn primär" type="submit" style="align-self:flex-end">Projekt anlegen</button>
+    </form>
+    <div class="raster">
+      ${S.projekte.map(p=>`<button class="karte projekt" data-id="${p.id}"><b>${esc(p.kunde)}</b><span class="leise">${esc(p.ort||"")} · ${datum(p.erstellt_am)}</span></button>`).join("") || `<p class="leise">Noch keine Projekte. Leg oben das erste an.</p>`}
+    </div>
+  </div>`;
+  document.getElementById("neu").onsubmit = e => { e.preventDefault(); lade(async()=>{
+    const kunde = document.getElementById("kunde").value.trim(), ort = document.getElementById("ort").value.trim();
+    const { data, error } = await sb.from("bad_projekte").insert({kunde, ort}).select().single();
+    if(error) throw error; await oeffneProjekt(data);
+  }); };
+  app.querySelectorAll(".projekt").forEach(b=>b.onclick=()=>lade(()=>oeffneProjekt(S.projekte.find(p=>p.id===b.dataset.id))));
+}
+
+async function oeffneProjekt(p){
+  S.projekt = p; S.bilder=[]; S.auswahlFoto=null; S.wunsch="";
+  await ladeBilder();
+  const vorher = S.bilder.filter(b=>b.art==="vorher");
+  S.auswahlFoto = vorher.length ? vorher[vorher.length-1].id : null;
+  setzeStandardHaken(); geh("projekt");
+}
+
+function produkteDerStufe(st){ return S.produkte.filter(p=>p.stufe===st); }
+function setzeStandardHaken(){
+  S.haken = {};
+  for(const st of STUFEN){
+    const ps = produkteDerStufe(st);
+    // Standard: alles außer Badewanne + Wannenarmatur (typisch: Dusche statt Wanne)
+    S.haken[st] = new Set(ps.filter(p=>!["badewanne","wannenarmatur"].includes(p.kategorie)).map(p=>p.id));
+  }
+}
+function preis(st){
+  const ps = produkteDerStufe(st).filter(p=>S.haken[st]?.has(p.id));
+  const mat = ps.reduce((s,p)=>s+(Number(p.preis_eur)||0),0);
+  const fehlt = ps.filter(p=>p.preis_eur==null).length;
+  const e = S.einst[st] || {pauschale_eur:0,spanne_prozent:15};
+  const basis = mat + Number(e.pauschale_eur||0);
+  const sp = Number(e.spanne_prozent||15)/100;
+  return { mat, fehlt, pauschale:Number(e.pauschale_eur||0), von:basis*(1-sp), bis:basis*(1+sp), ps };
+}
+
+function renderProjekt(){
+  const vorher = S.bilder.filter(b=>b.art==="vorher");
+  const foto = S.bilder.find(b=>b.id===S.auswahlFoto);
+  const nachher = S.bilder.filter(b=>b.art==="nachher" && b.vorher_id===S.auswahlFoto).reverse();
+  const st = S.stufe, e = S.einst[st]||{}, pr = preis(st);
+  app.innerHTML = `
+  <div class="stapel">
+    <div class="zeile"><button class="btn klein text" id="zurueck">← Projekte</button></div>
+    <div><h1>${esc(S.projekt.kunde)}</h1><span class="leise">${esc(S.projekt.ort||"")}</span></div>
+    ${S.fehler?`<div class="fehler">${esc(S.fehler)}</div>`:""}
+
+    <section class="karte stapel">
+      <div class="zeile" style="justify-content:space-between"><h2>1 · Fotos vom jetzigen Bad</h2>
+        <label class="btn primär" for="kamera">Foto aufnehmen<input id="kamera" type="file" accept="image/*" capture="environment" multiple hidden></label></div>
+      <p class="leise" style="margin:0">Aus der Türecke fotografieren, Querformat, Licht an. Keine Personen im Bild.</p>
+      <div class="fotos">
+        ${vorher.map(b=>`<button class="foto" data-id="${b.id}" aria-pressed="${b.id===S.auswahlFoto}"><img src="${S.urls[b.storage_pfad]||""}" alt="Vorher-Foto"><span class="marke">vorher</span></button>`).join("") || `<p class="leise">Noch keine Fotos.</p>`}
+      </div>
+    </section>
+
+    ${foto ? `
+    <div class="layout">
+      <section class="karte stapel">
+        <h2>2 · Neues Bad gestalten</h2>
+        <div class="stufen" role="group" aria-label="Ausstattung">
+          ${STUFEN.map(s=>`<button class="stufe" data-st="${s}" aria-pressed="${s===st}"><b>${esc(S.einst[s]?.bezeichnung||s)}</b><span>Vigour ${esc(S.einst[s]?.serie||"")}</span></button>`).join("")}
+        </div>
+        <div class="produkte">
+          ${produkteDerStufe(st).map(p=>`
+            <label class="prod" for="h_${p.id}">
+              <input type="checkbox" id="h_${p.id}" data-pid="${p.id}" ${S.haken[st]?.has(p.id)?"checked":""}>
+              <span><span class="kat">${KAT[p.kategorie]||p.kategorie}</span><br>${esc(p.bezeichnung)}</span>
+              <span class="preis">${p.preis_eur==null?'<span class="fehlt">Preis fehlt</span>':eur(p.preis_eur)}</span>
+            </label>`).join("")}
+        </div>
+        <label class="feld" for="wunsch">Besondere Wünsche (wird an die KI übergeben)
+          <textarea id="wunsch" placeholder="z. B. Dusche statt Wanne ans Fenster, Wandfliesen 60×120 in hellem Grau, Holzoptik am Boden">${esc(S.wunsch)}</textarea></label>
+        <div class="zeile">
+          <label class="feld" for="groesse" style="flex:0 1 200px">Bildqualität
+            <select id="groesse"><option value="1K" ${S.groesse==="1K"?"selected":""}>Standard (ca. 7 Cent)</option><option value="2K" ${S.groesse==="2K"?"selected":""}>Hoch (ca. 10 Cent)</option></select></label>
+          <button class="btn primär" id="erzeugen" ${S.busy?"disabled":""} style="align-self:flex-end;flex:1 1 200px">${S.busy?'<span class="lädt"></span> Bad wird erzeugt … (bis ca. 30 s)':"Neues Bad erzeugen"}</button>
+          <button class="btn" id="alleDrei" ${S.busy?"disabled":""} style="align-self:flex-end">Alle 3 Stufen</button>
+        </div>
+      </section>
+
+      <section class="karte stapel">
+        <h2>3 · Kostenrahmen ${esc(e.bezeichnung||"")}</h2>
+        <dl class="summe">
+          <dt>Material Vigour ${esc(e.serie||"")} (${pr.ps.length} Positionen)</dt><dd>${eur(pr.mat)}</dd>
+          <dt>Pauschale Rückbau, Installation, Fliesen, Montage</dt><dd>${pr.pauschale?eur(pr.pauschale):'<span class="fehlt">nicht hinterlegt</span>'}</dd>
+          <dt style="padding-top:8px">Voraussichtlich</dt><dd class="gross" style="padding-top:4px">${eur(pr.von)} – ${eur(pr.bis)}</dd>
+        </dl>
+        ${pr.fehlt?`<div class="hinweis">${pr.fehlt} Produkt(e) ohne Preis. Unter „Produkte &amp; Preise“ ergänzen.</div>`:""}
+        ${!pr.pauschale?`<div class="hinweis">Für eine echte Spanne bitte unter „Produkte &amp; Preise“ deine Pauschale für Arbeit und Fliesen je Stufe eintragen.</div>`:""}
+        <p class="leise" style="margin:0">Materialpreise: Shoppreise als Richtwert. Spanne ±${Number(e.spanne_prozent||15)} %.</p>
+      </section>
+    </div>
+
+    <section class="karte stapel">
+      <h2>4 · Vorher / Nachher</h2>
+      <div id="vergleichBox"></div>
+      <div class="ergebnisse">
+        ${nachher.map(b=>`<button class="foto" data-nach="${b.id}"><img src="${S.urls[b.storage_pfad]||""}" alt="Nachher ${esc(b.stufe||"")}"><span class="marke">${esc(S.einst[b.stufe]?.bezeichnung||"nachher")}</span></button>`).join("") || `<p class="leise">Noch kein Entwurf für dieses Foto. Oben „Neues Bad erzeugen“ antippen.</p>`}
+      </div>
+    </section>` : ""}
+  </div>`;
+
+  document.getElementById("zurueck").onclick = ()=>{ S.projekt=null; lade(async()=>{ await ladeProjekte(); geh("projekte"); }); };
+  document.getElementById("kamera").onchange = ev => lade(()=>hochladen([...ev.target.files]));
+  app.querySelectorAll(".foto[data-id]").forEach(b=>b.onclick=()=>{ S.auswahlFoto=b.dataset.id; render(); });
+  if(!foto) return;
+  app.querySelectorAll(".stufe").forEach(b=>b.onclick=()=>{ S.stufe=b.dataset.st; render(); });
+  app.querySelectorAll("[data-pid]").forEach(c=>c.onchange=()=>{ const set=S.haken[st]; c.checked?set.add(c.dataset.pid):set.delete(c.dataset.pid); render(); });
+  const w = document.getElementById("wunsch"); w.oninput = ()=>{ S.wunsch = w.value; };
+  document.getElementById("groesse").onchange = ev => { S.groesse = ev.target.value; };
+  document.getElementById("erzeugen").onclick = ()=>erzeuge([st]);
+  document.getElementById("alleDrei").onclick = ()=>erzeuge(STUFEN);
+  app.querySelectorAll("[data-nach]").forEach(b=>b.onclick=()=>zeigeVergleich(b.dataset.nach));
+  if(nachher.length) zeigeVergleich(S.zeigeNach && nachher.some(n=>n.id===S.zeigeNach) ? S.zeigeNach : nachher[0].id);
+}
+
+function zeigeVergleich(nachId){
+  S.zeigeNach = nachId;
+  const n = S.bilder.find(b=>b.id===nachId), v = S.bilder.find(b=>b.id===n?.vorher_id);
+  const box = document.getElementById("vergleichBox"); if(!n||!v||!box) return;
+  box.innerHTML = `
+    <div class="vergleich" id="vgl">
+      <img src="${S.urls[n.storage_pfad]}" alt="Nachher">
+      <div class="oben"><img src="${S.urls[v.storage_pfad]}" alt="Vorher"></div>
+      <div class="griff"></div>
+      <span class="lbl" style="left:10px">Vorher</span><span class="lbl" style="right:10px">Nachher · ${esc(S.einst[n.stufe]?.bezeichnung||"")}</span>
+      <input type="range" min="0" max="100" value="50" aria-label="Vorher/Nachher verschieben" id="regler">
+    </div>
+    ${n.wunsch?`<p class="leise" style="margin:6px 0 0">Wunsch: ${esc(n.wunsch)}</p>`:""}`;
+  const vgl = document.getElementById("vgl"), oben = vgl.querySelector(".oben"), griff = vgl.querySelector(".griff"), obenImg = oben.querySelector("img");
+  const groesse = ()=>{ obenImg.style.width = vgl.clientWidth+"px"; obenImg.style.height = vgl.clientHeight+"px"; obenImg.style.objectFit="cover"; };
+  const setze = p => { oben.style.width = p+"%"; griff.style.left = p+"%"; };
+  vgl.querySelector("img").onload = groesse; groesse(); new ResizeObserver(groesse).observe(vgl);
+  document.getElementById("regler").oninput = ev => setze(ev.target.value);
+  app.querySelectorAll("[data-nach]").forEach(b=>b.style.borderColor = b.dataset.nach===nachId ? "var(--blau)" : "transparent");
+}
+
+async function hochladen(files){
+  for(const f of files){
+    const { blob } = await verkleinere(f);
+    const pfad = `${S.projekt.id}/vorher-${crypto.randomUUID()}.jpg`;
+    const { error } = await sb.storage.from("bad-fotos").upload(pfad, blob, { contentType:"image/jpeg" });
+    if(error) throw error;
+    const { data, error:e2 } = await sb.from("bad_bilder").insert({ projekt_id:S.projekt.id, art:"vorher", storage_pfad:pfad }).select().single();
+    if(e2) throw e2;
+    S.auswahlFoto = data.id;
+  }
+  await ladeBilder(); render();
+}
+
+async function erzeuge(stufen){
+  const foto = S.bilder.find(b=>b.id===S.auswahlFoto); if(!foto || S.busy) return;
+  const el = app.querySelector(`.foto[data-id="${foto.id}"] img`);
+  const aspect = el && el.naturalWidth ? passendesFormat(el.naturalWidth, el.naturalHeight) : "4:3";
+  S.busy = true; setFehler(""); render();
+  try{
+    for(const st of stufen){
+      const { data, error } = await sb.functions.invoke("bad-generieren", { body:{
+        vorher_id: foto.id, stufe: st, produkt_ids:[...(S.haken[st]||[])], wunsch:S.wunsch,
+        aspect, size:S.groesse } });
+      if(error){
+        let msg = error.message;
+        try{ const j = await error.context.json(); if(j?.fehler) msg = j.fehler; }catch(_){}
+        throw new Error(msg);
+      }
+      if(data?.fehler) throw new Error(data.fehler);
+      if(data?.url) S.urls[data.bild.storage_pfad] = data.url;
+      S.zeigeNach = data.bild.id;
+      await ladeBilder();
+    }
+  } catch(e){ setFehler("Bild konnte nicht erzeugt werden: " + (e.message||e)); }
+  S.busy = false; render();
+}
+
+/* ---------- Produkte & Preise ---------- */
+async function renderProdukte(){
+  await produktBildUrls();
+  const alle = [...S.produkte].sort((a,b)=>STUFEN.indexOf(a.stufe)-STUFEN.indexOf(b.stufe) || KAT_ORDER.indexOf(a.kategorie)-KAT_ORDER.indexOf(b.kategorie));
+  app.innerHTML = `
+  <div class="stapel">
+    <h1>Produkte &amp; Preise</h1>
+    ${S.fehler?`<div class="fehler">${esc(S.fehler)}</div>`:""}
+    <section class="karte stapel">
+      <h2>Pauschalen je Stufe</h2>
+      <p class="leise" style="margin:0">Arbeit, Rückbau, Installation, Fliesen und Nebenarbeiten als grobe Pauschale. Sie fließt in den Kostenrahmen ein.</p>
+      <div class="tabwrap"><table class="liste"><thead><tr><th>Stufe</th><th>Serie</th><th>Pauschale €</th><th>Spanne ± %</th></tr></thead><tbody>
+        ${STUFEN.map(s=>{const e=S.einst[s]||{};return `<tr><td><b>${esc(e.bezeichnung)}</b></td><td>Vigour ${esc(e.serie)}</td>
+        <td><input type="number" id="pa_${s}" value="${Number(e.pauschale_eur||0)}" min="0" step="100" data-einst="${s}" data-feld="pauschale_eur"></td>
+        <td><input type="number" id="sp_${s}" value="${Number(e.spanne_prozent||15)}" min="0" max="50" step="1" data-einst="${s}" data-feld="spanne_prozent"></td></tr>`}).join("")}
+      </tbody></table></div>
+    </section>
+    <section class="karte stapel">
+      <h2>Produkte</h2>
+      <p class="leise" style="margin:0">Mit einem Produktfoto (Herstellerbild) trifft die KI das Produkt deutlich genauer. Änderungen werden sofort gespeichert.</p>
+      <div class="tabwrap"><table class="liste"><thead><tr><th>Foto</th><th>Stufe</th><th>Kategorie</th><th>Produkt</th><th>Preis €</th><th></th></tr></thead><tbody>
+      ${alle.map(p=>`<tr>
+        <td>${p.bild_pfad&&S.urls["p:"+p.bild_pfad]?`<img class="mini" src="${S.urls["p:"+p.bild_pfad]}" alt="">`:`<span class="mini"></span>`}</td>
+        <td>${esc(S.einst[p.stufe]?.bezeichnung||p.stufe)}</td><td>${KAT[p.kategorie]||p.kategorie}</td>
+        <td>${esc(p.bezeichnung)}<br><span class="leise">${esc(p.artikelnummer||"")} · ${esc(p.preis_quelle||"")}</span></td>
+        <td><input type="number" id="pr_${p.id}" value="${p.preis_eur??""}" min="0" step="0.01" data-preis="${p.id}" placeholder="fehlt"></td>
+        <td><label class="btn klein" for="bild_${p.id}">Foto<input type="file" id="bild_${p.id}" accept="image/*" data-bild="${p.id}" hidden></label></td>
+      </tr>`).join("")}
+      </tbody></table></div>
+    </section>
+  </div>`;
+  app.querySelectorAll("[data-einst]").forEach(i=>i.onchange=()=>lade(async()=>{
+    const { error } = await sb.from("bad_einstellungen").update({ [i.dataset.feld]: Number(i.value)||0 }).eq("stufe", i.dataset.einst);
+    if(error) throw error; S.einst[i.dataset.einst][i.dataset.feld] = Number(i.value)||0;
+  }));
+  app.querySelectorAll("[data-preis]").forEach(i=>i.onchange=()=>lade(async()=>{
+    const v = i.value===""?null:Number(i.value);
+    const { error } = await sb.from("bad_produkte").update({ preis_eur:v, preis_quelle: v==null?"Preis fehlt – bitte ergänzen":"Eigener Preis" }).eq("id", i.dataset.preis);
+    if(error) throw error; const p = S.produkte.find(x=>x.id===i.dataset.preis); p.preis_eur=v; p.preis_quelle = v==null?"Preis fehlt – bitte ergänzen":"Eigener Preis";
+  }));
+  app.querySelectorAll("[data-bild]").forEach(i=>i.onchange=()=>lade(async()=>{
+    const f = i.files[0]; if(!f) return;
+    const { blob } = await verkleinere(f, 1024);
+    const pfad = `${i.dataset.bild}-${Date.now()}.jpg`;
+    const { error } = await sb.storage.from("bad-produktbilder").upload(pfad, blob, { contentType:"image/jpeg" });
+    if(error) throw error;
+    const { error:e2 } = await sb.from("bad_produkte").update({ bild_pfad:pfad }).eq("id", i.dataset.bild);
+    if(e2) throw e2;
+    S.produkte.find(x=>x.id===i.dataset.bild).bild_pfad = pfad; renderProdukte();
+  }));
+}
+
+/* ---------- Start ---------- */
+async function start(session){
+  S.user = session?.user || null;
+  if(!S.user){ render(); return; }
+  await lade(async()=>{
+    const { data:ok } = await sb.rpc("bad_ist_team");
+    if(!ok){ setFehler(`Das Konto ${S.user.email} ist nicht für den Badplaner freigeschaltet.`); await sb.auth.signOut(); return; }
+    await ladeStamm(); setzeStandardHaken(); await ladeProjekte(); render();
+  });
+}
+sb.auth.onAuthStateChange((ev, session)=>{
+  if(ev==="INITIAL_SESSION" || ((ev==="SIGNED_IN"||ev==="SIGNED_OUT") && (session?.user?.id)!==(S.user?.id))) setTimeout(()=>start(session),0);
+});
+</script>
+</body>
+</html>
