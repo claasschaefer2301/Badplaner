@@ -315,7 +315,7 @@ function renderProjekt(){
         <label class="feld" for="wunsch">Besondere Wünsche (wird an die KI übergeben)
           <textarea id="wunsch" placeholder="z. B. Dusche statt Wanne ans Fenster, Wandfliesen 60×120 in hellem Grau, Holzoptik am Boden">${esc(S.wunsch)}</textarea></label>
         <div class="zeile">
-          <label class="feld" for="groesse" style="flex:0 1 200px">Bildqualität
+          <label class="feld" for="groesse" style="flex:1 1 230px">Bildqualität
             <select id="groesse"><option value="1K" ${S.groesse==="1K"?"selected":""}>Standard (ca. 7 Cent)</option><option value="2K" ${S.groesse==="2K"?"selected":""}>Hoch (ca. 10 Cent)</option></select></label>
           <button class="btn primär" id="erzeugen" ${S.busy?"disabled":""} style="align-self:flex-end;flex:1 1 200px">${S.busy?'<span class="lädt"></span> Bad wird erzeugt … (bis ca. 30 s)':"Neues Bad erzeugen"}</button>
           <button class="btn" id="alleDrei" ${S.busy?"disabled":""} style="align-self:flex-end">Alle 3 Stufen</button>
