@@ -122,7 +122,7 @@ const KAT_ORDER = Object.keys(KAT);
 const STUFEN = ["basis","komfort","premium"];
 const ASPECTS = [["1:1",1],["4:3",4/3],["3:4",3/4],["3:2",3/2],["2:3",2/3],["16:9",16/9],["9:16",9/16],["5:4",5/4],["4:5",4/5]];
 
-const S = { user:null, projekte:[], projekt:null, bilder:[], urls:{}, produkte:[], einst:{}, auswahlFoto:null, stufe:"komfort", haken:{}, wunsch:"", groesse:"1K", busy:false, fehler:"" };
+const S = { bausteine:[], bau:{}, user:null, projekte:[], projekt:null, bilder:[], urls:{}, produkte:[], einst:{}, auswahlFoto:null, stufe:"komfort", haken:{}, wunsch:"", groesse:"1K", busy:false, fehler:"" };
 const app = document.getElementById("app");
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const eur = v => v==null ? "–" : Number(v).toLocaleString("de-DE",{style:"currency",currency:"EUR",maximumFractionDigits:0});
@@ -164,11 +164,13 @@ function renderLogin(modus="login", info=""){
 
 /* ---------- Daten ---------- */
 async function ladeStamm(){
-  const [{data:prod,error:e1},{data:ein,error:e2}] = await Promise.all([
+  const [{data:prod,error:e1},{data:ein,error:e2},{data:bau,error:e3}] = await Promise.all([
     sb.from("bad_produkte").select("*").eq("aktiv",true),
-    sb.from("bad_einstellungen").select("*")
+    sb.from("bad_einstellungen").select("*"),
+    sb.from("bad_bausteine").select("*").eq("aktiv",true).order("sortierung")
   ]);
-  if(e1) throw e1; if(e2) throw e2;
+  if(e1) throw e1; if(e2) throw e2; if(e3) throw e3;
+  S.bausteine = bau||[];
   S.produkte = (prod||[]).sort((a,b)=>KAT_ORDER.indexOf(a.kategorie)-KAT_ORDER.indexOf(b.kategorie));
   S.einst = Object.fromEntries((ein||[]).map(r=>[r.stufe,r]));
 }
@@ -251,7 +253,7 @@ function renderProjekte(){
 }
 
 async function oeffneProjekt(p){
-  S.projekt = p; S.bilder=[]; S.auswahlFoto=null; S.wunsch="";
+  S.projekt = p; S.bilder=[]; S.auswahlFoto=null; S.wunsch=""; S.bau={};
   await ladeBilder();
   const vorher = S.bilder.filter(b=>b.art==="vorher");
   S.auswahlFoto = vorher.length ? vorher[vorher.length-1].id : null;
@@ -272,9 +274,12 @@ function preis(st){
   const mat = ps.reduce((s,p)=>s+(Number(p.preis_eur)||0),0);
   const fehlt = ps.filter(p=>p.preis_eur==null).length;
   const e = S.einst[st] || {pauschale_eur:0,spanne_prozent:15};
-  const basis = mat + Number(e.pauschale_eur||0);
+  const bauListe = S.bausteine.filter(b=>S.bau[b.id]);
+  const bau = bauListe.reduce((s,b)=>s+(Number(b.preis_eur)||0)*S.bau[b.id],0);
+  const bauFehlt = bauListe.filter(b=>b.preis_eur==null).length;
+  const basis = mat + bau + Number(e.pauschale_eur||0);
   const sp = Number(e.spanne_prozent||15)/100;
-  return { mat, fehlt, pauschale:Number(e.pauschale_eur||0), von:basis*(1-sp), bis:basis*(1+sp), ps };
+  return { mat, fehlt, bau, bauFehlt, bauAnzahl:bauListe.length, pauschale:Number(e.pauschale_eur||0), von:basis*(1-sp), bis:basis*(1+sp), ps };
 }
 
 function renderProjekt(){
@@ -312,6 +317,18 @@ function renderProjekt(){
               <span class="preis">${p.preis_eur==null?'<span class="fehlt">Preis fehlt</span>':eur(p.preis_eur)}</span>
             </label>`).join("")}
         </div>
+        <div class="stapel" style="gap:4px">
+          <h3>Wände &amp; Vorwand <span class="leise" style="font-family:var(--f-body);font-weight:400">Geberit GIS · gilt für alle Stufen</span></h3>
+          <div class="produkte">
+          ${S.bausteine.map(b=>`
+            <div class="prod" style="grid-template-columns:28px minmax(0,1fr) auto auto">
+              <input type="checkbox" id="b_${b.id}" data-bid="${b.id}" ${S.bau[b.id]?"checked":""} aria-label="${esc(b.bezeichnung)}">
+              <label for="b_${b.id}">${esc(b.bezeichnung)}</label>
+              ${S.bau[b.id]?`<input type="number" id="bm_${b.id}" data-bmenge="${b.id}" value="${S.bau[b.id]}" min="${b.einheit==="m"?0.5:1}" step="${b.einheit==="m"?0.5:1}" style="width:78px;min-height:38px;padding:6px 8px" aria-label="Menge in ${b.einheit}">`:`<span></span>`}
+              <span class="preis">${b.preis_eur==null?'<span class="fehlt">Preis fehlt</span>':eur(b.preis_eur)+" / "+b.einheit}</span>
+            </div>`).join("")}
+          </div>
+        </div>
         <label class="feld" for="wunsch">Besondere Wünsche (wird an die KI übergeben)
           <textarea id="wunsch" placeholder="z. B. Dusche statt Wanne ans Fenster, Wandfliesen 60×120 in hellem Grau, Holzoptik am Boden">${esc(S.wunsch)}</textarea></label>
         <div class="zeile">
@@ -326,9 +343,11 @@ function renderProjekt(){
         <h2>3 · Kostenrahmen ${esc(e.bezeichnung||"")}</h2>
         <dl class="summe">
           <dt>Material Vigour ${esc(e.serie||"")} (${pr.ps.length} Positionen)</dt><dd>${eur(pr.mat)}</dd>
+          ${pr.bauAnzahl?`<dt>Wände &amp; Vorwand Geberit GIS (${pr.bauAnzahl} Positionen)</dt><dd>${eur(pr.bau)}</dd>`:""}
           <dt>Pauschale Rückbau, Installation, Fliesen, Montage</dt><dd>${pr.pauschale?eur(pr.pauschale):'<span class="fehlt">nicht hinterlegt</span>'}</dd>
           <dt style="padding-top:8px">Voraussichtlich</dt><dd class="gross" style="padding-top:4px">${eur(pr.von)} – ${eur(pr.bis)}</dd>
         </dl>
+        ${pr.bauFehlt?`<div class="hinweis">${pr.bauFehlt} Wand-Baustein(e) ohne Preis. Unter „Produkte &amp; Preise“ ergänzen.</div>`:""}
         ${pr.fehlt?`<div class="hinweis">${pr.fehlt} Produkt(e) ohne Preis. Unter „Produkte &amp; Preise“ ergänzen.</div>`:""}
         ${!pr.pauschale?`<div class="hinweis">Für eine echte Spanne bitte unter „Produkte &amp; Preise“ deine Pauschale für Arbeit und Fliesen je Stufe eintragen.</div>`:""}
         <p class="leise" style="margin:0">Materialpreise: Shoppreise als Richtwert. Spanne ±${Number(e.spanne_prozent||15)} %.</p>
@@ -350,6 +369,8 @@ function renderProjekt(){
   if(!foto) return;
   app.querySelectorAll(".stufe").forEach(b=>b.onclick=()=>{ S.stufe=b.dataset.st; render(); });
   app.querySelectorAll("[data-pid]").forEach(c=>c.onchange=()=>{ const set=S.haken[st]; c.checked?set.add(c.dataset.pid):set.delete(c.dataset.pid); render(); });
+  app.querySelectorAll("[data-bid]").forEach(c=>c.onchange=()=>{ if(c.checked){ const b=S.bausteine.find(x=>x.id===c.dataset.bid); S.bau[c.dataset.bid] = b.einheit==="m"?1.5:1; } else delete S.bau[c.dataset.bid]; render(); });
+  app.querySelectorAll("[data-bmenge]").forEach(i=>i.onchange=()=>{ const v=Number(i.value); if(v>0) S.bau[i.dataset.bmenge]=v; render(); });
   const w = document.getElementById("wunsch"); w.oninput = ()=>{ S.wunsch = w.value; };
   document.getElementById("groesse").onchange = ev => { S.groesse = ev.target.value; };
   document.getElementById("erzeugen").onclick = ()=>erzeuge([st]);
@@ -401,6 +422,7 @@ async function erzeuge(stufen){
     for(const st of stufen){
       const { data, error } = await sb.functions.invoke("bad-generieren", { body:{
         vorher_id: foto.id, stufe: st, produkt_ids:[...(S.haken[st]||[])], wunsch:S.wunsch,
+        bausteine: Object.entries(S.bau).map(([id,menge])=>({id,menge})),
         aspect, size:S.groesse } });
       if(error){
         let msg = error.message;
@@ -434,6 +456,14 @@ async function renderProdukte(){
       </tbody></table></div>
     </section>
     <section class="karte stapel">
+      <h2>Wände &amp; Vorwand (Geberit GIS)</h2>
+      <p class="leise" style="margin:0">Preis je Stück oder Meter, am besten inklusive Material, Montage und Fliesen.</p>
+      <div class="tabwrap"><table class="liste"><thead><tr><th>Baustein</th><th>Einheit</th><th>Preis €</th></tr></thead><tbody>
+      ${S.bausteine.map(b=>`<tr><td>${esc(b.bezeichnung)}</td><td>${b.einheit}</td>
+        <td><input type="number" id="bp_${b.id}" value="${b.preis_eur??""}" min="0" step="10" data-bpreis="${b.id}" placeholder="fehlt"></td></tr>`).join("")}
+      </tbody></table></div>
+    </section>
+    <section class="karte stapel">
       <h2>Produkte</h2>
       <p class="leise" style="margin:0">Mit einem Produktfoto (Herstellerbild) trifft die KI das Produkt deutlich genauer. Änderungen werden sofort gespeichert.</p>
       <div class="tabwrap"><table class="liste"><thead><tr><th>Foto</th><th>Stufe</th><th>Kategorie</th><th>Produkt</th><th>Preis €</th><th></th></tr></thead><tbody>
@@ -450,6 +480,11 @@ async function renderProdukte(){
   app.querySelectorAll("[data-einst]").forEach(i=>i.onchange=()=>lade(async()=>{
     const { error } = await sb.from("bad_einstellungen").update({ [i.dataset.feld]: Number(i.value)||0 }).eq("stufe", i.dataset.einst);
     if(error) throw error; S.einst[i.dataset.einst][i.dataset.feld] = Number(i.value)||0;
+  }));
+  app.querySelectorAll("[data-bpreis]").forEach(i=>i.onchange=()=>lade(async()=>{
+    const v = i.value===""?null:Number(i.value);
+    const { error } = await sb.from("bad_bausteine").update({ preis_eur:v }).eq("id", i.dataset.bpreis);
+    if(error) throw error; S.bausteine.find(x=>x.id===i.dataset.bpreis).preis_eur = v;
   }));
   app.querySelectorAll("[data-preis]").forEach(i=>i.onchange=()=>lade(async()=>{
     const v = i.value===""?null:Number(i.value);

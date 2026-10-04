@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
     const key = Deno.env.get("GEMINI_API_KEY");
     if (!key) return json({ fehler: "Der Gemini-Schlüssel fehlt noch. In Supabase unter Edge Functions → Secrets als GEMINI_API_KEY eintragen." }, 500);
 
-    const { vorher_id, stufe, produkt_ids = [], wunsch = "", aspect = "4:3", size = "1K" } = await req.json();
+    const { vorher_id, stufe, produkt_ids = [], bausteine = [], wunsch = "", aspect = "4:3", size = "1K" } = await req.json();
     if (!vorher_id) return json({ fehler: "vorher_id fehlt" }, 400);
 
     const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -135,6 +135,15 @@ Deno.serve(async (req) => {
       zeilen.push(`- ${KAT_LABEL[p.kategorie] ?? p.kategorie}: ${p.bild_beschreibung ?? p.bezeichnung}${ref}`);
     }
 
+    const bauIds = (bausteine as any[]).map((b) => b.id).filter(Boolean);
+    const { data: bauDaten } = bauIds.length
+      ? await admin.from("bad_bausteine").select("*").in("id", bauIds)
+      : { data: [] as any[] };
+    const bauZeilen = (bauDaten ?? []).map((b: any) => {
+      const menge = Number((bausteine as any[]).find((x) => x.id === b.id)?.menge) || 1;
+      return `- ${b.ki_text}${b.einheit === "m" ? ` (about ${menge} m long)` : menge > 1 ? ` (${menge}x)` : ""}`;
+    });
+
     const prompt = [
       "You are a photorealistic bathroom renovation visualizer for a German plumbing company.",
       "Image #1 is a photo of the customer's CURRENT bathroom. Produce the SAME photo after a complete, professional renovation.",
@@ -142,6 +151,7 @@ Deno.serve(async (req) => {
       "Place the new sanitary items at the positions where the corresponding old items are, unless the customer wish says otherwise.",
       "Install these products:",
       ...(zeilen.length ? zeilen : ["- modern white sanitary ceramics and chrome fittings"]),
+      ...(bauZeilen.length ? ["Construction work (pre-walls built with a dry-construction installation system, all tiled to match):", ...bauZeilen] : []),
       wunsch ? `Customer wishes (German, follow them): ${wunsch}` : "",
       "Finish: new tiles and walls in a calm, contemporary style matching the products, clean grout lines, good natural lighting, no people, no text, no logos, no watermarks.",
       "The result must look like a real photograph of a finished bathroom, not a 3D render.",
@@ -158,7 +168,7 @@ Deno.serve(async (req) => {
 
     const { data: zeile, error: insErr } = await admin.from("bad_bilder").insert({
       projekt_id: vorher.projekt_id, art: "nachher", vorher_id, stufe: stufe ?? null,
-      storage_pfad: pfad, produkt_ids, wunsch,
+      storage_pfad: pfad, produkt_ids, bausteine, wunsch,
     }).select().single();
     if (insErr) return json({ fehler: insErr.message }, 500);
 
