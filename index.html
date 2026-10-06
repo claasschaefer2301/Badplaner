@@ -182,6 +182,7 @@ async function ladeProjekte(){
 async function ladeBilder(){
   const { data, error } = await sb.from("bad_bilder").select("*").eq("projekt_id",S.projekt.id).order("erstellt_am");
   if(error) throw error; S.bilder = data||[];
+  S.bilder.forEach(b=>{ if(b.storage_pfad.startsWith("demo/")) S.urls[b.storage_pfad] = b.storage_pfad; }); // Beispielbilder liegen im Repo
   const fehlend = S.bilder.map(b=>b.storage_pfad).filter(p=>!S.urls[p]);
   if(fehlend.length){
     const { data:u } = await sb.storage.from("bad-fotos").createSignedUrls(fehlend, 3600*6);
