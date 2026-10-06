@@ -144,9 +144,8 @@ function renderLogin(modus="login", info=""){
       <label class="feld" for="pw">Passwort<input type="password" id="pw" required minlength="8" autocomplete="${modus==="login"?"current-password":"new-password"}"></label>
       <button class="btn primär" type="submit">${modus==="login"?"Anmelden":"Konto anlegen"}</button>
     </form>
-    <button class="btn text" id="wechsel">${modus==="login"?"Noch kein Konto? Konto anlegen":"Schon ein Konto? Anmelden"}</button>
+    <p class="leise" style="margin:0">Neue Konten werden aus Sicherheitsgründen nur von Schaefer Haustechnik angelegt.</p>
   </div>`;
-  document.getElementById("wechsel").onclick = () => { setFehler(""); renderLogin(modus==="login"?"neu":"login"); };
   document.getElementById("loginForm").onsubmit = async e => {
     e.preventDefault();
     const email = document.getElementById("em").value.trim(), password = document.getElementById("pw").value;
@@ -448,6 +447,15 @@ async function renderProdukte(){
     <h1>Produkte &amp; Preise</h1>
     ${S.fehler?`<div class="fehler">${esc(S.fehler)}</div>`:""}
     <section class="karte stapel">
+      <h2>Mein Konto</h2>
+      <p class="leise" style="margin:0">Angemeldet als ${esc(S.user.email)}.</p>
+      <form id="pwForm" class="zeile" autocomplete="off">
+        <label class="feld" for="npw" style="flex:1 1 260px">Neues Passwort (mind. 8 Zeichen)<input type="password" id="npw" required minlength="8" autocomplete="new-password"></label>
+        <button class="btn primär" type="submit" style="align-self:flex-end">Passwort ändern</button>
+      </form>
+      ${S.pwOk?'<div class="hinweis">Passwort geändert.</div>':""}
+    </section>
+    <section class="karte stapel">
       <h2>Gemini-Schlüssel</h2>
       <p class="leise" style="margin:0">${keyOk?'<b style="color:var(--ok)">Hinterlegt.</b> Zum Ersetzen einfach einen neuen Schlüssel eintragen.':'<b style="color:var(--warn)">Noch nicht hinterlegt.</b> Ohne Schlüssel kann die App keine Bilder erzeugen.'} Der Schlüssel wird verschlüsselt in Supabase gespeichert und ist danach nicht mehr auslesbar.</p>
       <form id="keyForm" class="zeile" autocomplete="off">
@@ -486,6 +494,10 @@ async function renderProdukte(){
       </tbody></table></div>
     </section>
   </div>`;
+  document.getElementById("pwForm").onsubmit = e => { e.preventDefault(); lade(async()=>{
+    const { error } = await sb.auth.updateUser({ password: document.getElementById("npw").value });
+    if(error) throw error; S.pwOk = true; renderProdukte();
+  }); };
   document.getElementById("keyForm").onsubmit = e => { e.preventDefault(); lade(async()=>{
     const { error } = await sb.rpc("bad_setze_gemini_key", { schluessel: document.getElementById("gkey").value });
     if(error) throw error; renderProdukte();
