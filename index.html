@@ -140,15 +140,17 @@ function renderLogin(modus="login", info=""){
     ${info?`<div class="hinweis">${esc(info)}</div>`:""}
     ${S.fehler?`<div class="fehler">${esc(S.fehler)}</div>`:""}
     <form id="loginForm" class="stapel">
-      <label class="feld" for="em">E-Mail<input type="email" id="em" required autocomplete="email"></label>
-      <label class="feld" for="pw">Passwort<input type="password" id="pw" required minlength="8" autocomplete="${modus==="login"?"current-password":"new-password"}"></label>
+      <label class="feld" for="em">E-Mail<input type="email" id="em" required autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+      <label class="feld" for="pw">Passwort<input type="password" id="pw" required minlength="8" autocomplete="${modus==="login"?"current-password":"new-password"}" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+      <label class="zeile leise" for="pwzeigen" style="gap:8px"><input type="checkbox" id="pwzeigen" style="width:20px;height:20px;accent-color:var(--blau)"> Passwort anzeigen</label>
       <button class="btn primär" type="submit">${modus==="login"?"Anmelden":"Konto anlegen"}</button>
     </form>
     <p class="leise" style="margin:0">Neue Konten werden aus Sicherheitsgründen nur von Schaefer Haustechnik angelegt.</p>
   </div>`;
+  document.getElementById("pwzeigen").onchange = ev => { document.getElementById("pw").type = ev.target.checked ? "text" : "password"; };
   document.getElementById("loginForm").onsubmit = async e => {
     e.preventDefault();
-    const email = document.getElementById("em").value.trim(), password = document.getElementById("pw").value;
+    const email = document.getElementById("em").value.trim().toLowerCase(), password = document.getElementById("pw").value.trim();
     setFehler("");
     if(modus==="login"){
       const { error } = await sb.auth.signInWithPassword({ email, password });
