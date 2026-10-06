@@ -86,7 +86,9 @@ textarea{min-height:90px;resize:vertical}
 .vergleich .griff::after{content:"◀ ▶";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--weiss);color:var(--blau);font-size:.8rem;padding:8px 10px;border-radius:999px;white-space:nowrap;box-shadow:0 1px 6px rgba(0,0,0,.3)}
 .vergleich .lbl{position:absolute;bottom:10px;background:rgba(29,42,77,.8);color:var(--weiss);font-size:.8rem;padding:3px 10px;border-radius:999px}
 .vergleich input[type=range]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;margin:0}
-.ergebnisse{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+.ergebnisse{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+.bildbuehne{padding:10px}
+.bildbuehne .vergleich{max-width:calc(74vh * 4 / 3);margin-inline:auto}
 table.liste{width:100%;border-collapse:collapse;font-size:.92rem}
 table.liste th,table.liste td{padding:8px 6px;border-bottom:1px solid var(--linie);text-align:left;vertical-align:middle}
 table.liste input[type=number]{min-height:38px;width:110px;padding:6px 8px}
@@ -295,8 +297,18 @@ function renderProjekt(){
     <div><h1>${esc(S.projekt.kunde)}</h1><span class="leise">${esc(S.projekt.ort||"")}</span></div>
     ${S.fehler?`<div class="fehler">${esc(S.fehler)}</div>`:""}
 
+    ${foto ? `
+    <section class="karte stapel bildbuehne">
+      <div id="vergleichBox">${nachher.length ? "" : `
+        <div class="vergleich"><img src="${S.urls[foto.storage_pfad]||""}" alt="Jetziges Bad"><span class="lbl" style="left:10px">Vorher</span></div>
+        <p class="leise" style="margin:6px 0 0">Noch kein Entwurf für dieses Foto. Unten Ausstattung wählen und „Neues Bad erzeugen“ antippen.</p>`}</div>
+      ${nachher.length ? `<div class="ergebnisse">
+        ${nachher.map(b=>`<button class="foto" data-nach="${b.id}"><img src="${S.urls[b.storage_pfad]||""}" alt="Nachher ${esc(b.stufe||"")}"><span class="marke">${esc(S.einst[b.stufe]?.bezeichnung||"nachher")}</span></button>`).join("")}
+      </div>` : ""}
+    </section>` : ""}
+
     <section class="karte stapel">
-      <div class="zeile" style="justify-content:space-between"><h2>1 · Fotos vom jetzigen Bad</h2>
+      <div class="zeile" style="justify-content:space-between"><h2>Fotos vom jetzigen Bad</h2>
         <label class="btn primär" for="kamera">Foto aufnehmen<input id="kamera" type="file" accept="image/*" capture="environment" multiple hidden></label></div>
       <p class="leise" style="margin:0">Aus der Türecke fotografieren, Querformat, Licht an. Keine Personen im Bild.</p>
       <div class="fotos">
@@ -307,7 +319,7 @@ function renderProjekt(){
     ${foto ? `
     <div class="layout">
       <section class="karte stapel">
-        <h2>2 · Neues Bad gestalten</h2>
+        <h2>Neues Bad gestalten</h2>
         <div class="stufen" role="group" aria-label="Ausstattung">
           ${STUFEN.map(s=>`<button class="stufe" data-st="${s}" aria-pressed="${s===st}"><b>${esc(S.einst[s]?.bezeichnung||s)}</b><span>Vigour ${esc(S.einst[s]?.serie||"")}</span></button>`).join("")}
         </div>
@@ -342,7 +354,7 @@ function renderProjekt(){
       </section>
 
       <section class="karte stapel">
-        <h2>3 · Kostenrahmen ${esc(e.bezeichnung||"")}</h2>
+        <h2>Kostenrahmen ${esc(e.bezeichnung||"")}</h2>
         <dl class="summe">
           <dt>Material Vigour ${esc(e.serie||"")} (${pr.ps.length} Positionen)</dt><dd>${eur(pr.mat)}</dd>
           ${pr.bauAnzahl?`<dt>Wände &amp; Vorwand Geberit GIS (${pr.bauAnzahl} Positionen)</dt><dd>${eur(pr.bau)}</dd>`:""}
@@ -355,14 +367,7 @@ function renderProjekt(){
         <p class="leise" style="margin:0">Materialpreise: Shoppreise als Richtwert. Spanne ±${Number(e.spanne_prozent||15)} %.</p>
       </section>
     </div>
-
-    <section class="karte stapel">
-      <h2>4 · Vorher / Nachher</h2>
-      <div id="vergleichBox"></div>
-      <div class="ergebnisse">
-        ${nachher.map(b=>`<button class="foto" data-nach="${b.id}"><img src="${S.urls[b.storage_pfad]||""}" alt="Nachher ${esc(b.stufe||"")}"><span class="marke">${esc(S.einst[b.stufe]?.bezeichnung||"nachher")}</span></button>`).join("") || `<p class="leise">Noch kein Entwurf für dieses Foto. Oben „Neues Bad erzeugen“ antippen.</p>`}
-      </div>
-    </section>` : ""}
+` : ""}
   </div>`;
 
   document.getElementById("zurueck").onclick = ()=>{ S.projekt=null; lade(async()=>{ await ladeProjekte(); geh("projekte"); }); };
@@ -438,6 +443,7 @@ async function erzeuge(stufen){
     }
   } catch(e){ setFehler("Bild konnte nicht erzeugt werden: " + (e.message||e)); }
   S.busy = false; render();
+  if(!S.fehler) window.scrollTo({top:0,behavior:"smooth"});
 }
 
 /* ---------- Produkte & Preise ---------- */
