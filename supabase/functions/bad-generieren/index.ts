@@ -104,13 +104,17 @@ Deno.serve(async (req) => {
     const { data: istTeam, error: teamErr } = await userClient.rpc("bad_ist_team");
     if (teamErr || !istTeam) return json({ fehler: "Kein Zugriff. Bitte mit einem Team-Konto anmelden." }, 403);
 
-    const key = Deno.env.get("GEMINI_API_KEY");
-    if (!key) return json({ fehler: "Der Gemini-Schlüssel fehlt noch. In Supabase unter Edge Functions → Secrets als GEMINI_API_KEY eintragen." }, 500);
+    const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    let key = Deno.env.get("GEMINI_API_KEY");
+    if (!key) {
+      const { data: k } = await admin.rpc("bad_hole_gemini_key");
+      key = k ?? undefined;
+    }
+    if (!key) return json({ fehler: "Der Gemini-Schlüssel fehlt noch. In der App unter „Produkte & Preise“ → „Gemini-Schlüssel“ eintragen." }, 500);
 
     const { vorher_id, stufe, produkt_ids = [], bausteine = [], wunsch = "", aspect = "4:3", size = "1K" } = await req.json();
     if (!vorher_id) return json({ fehler: "vorher_id fehlt" }, 400);
 
-    const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: vorher, error: vErr } = await admin.from("bad_bilder").select("*").eq("id", vorher_id).single();
     if (vErr || !vorher) return json({ fehler: "Vorher-Foto nicht gefunden" }, 404);
 

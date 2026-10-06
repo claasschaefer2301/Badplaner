@@ -157,7 +157,7 @@ function renderLogin(modus="login", info=""){
     } else {
       const { error } = await sb.auth.signUp({ email, password, options:{ emailRedirectTo: location.href.split("#")[0] } });
       if(error){ setFehler(error.message); renderLogin(modus); }
-      else renderLogin("login","Konto angelegt. Bitte den Link in der Bestätigungs-Mail antippen, danach hier anmelden.");
+      else renderLogin("login","Konto angelegt. Bitte den Link in der Bestätigungs-Mail antippen und danach hier anmelden.");
     }
   };
 }
@@ -441,11 +441,20 @@ async function erzeuge(stufen){
 /* ---------- Produkte & Preise ---------- */
 async function renderProdukte(){
   await produktBildUrls();
+  const { data:keyOk } = await sb.rpc("bad_gemini_key_gesetzt");
   const alle = [...S.produkte].sort((a,b)=>STUFEN.indexOf(a.stufe)-STUFEN.indexOf(b.stufe) || KAT_ORDER.indexOf(a.kategorie)-KAT_ORDER.indexOf(b.kategorie));
   app.innerHTML = `
   <div class="stapel">
     <h1>Produkte &amp; Preise</h1>
     ${S.fehler?`<div class="fehler">${esc(S.fehler)}</div>`:""}
+    <section class="karte stapel">
+      <h2>Gemini-Schlüssel</h2>
+      <p class="leise" style="margin:0">${keyOk?'<b style="color:var(--ok)">Hinterlegt.</b> Zum Ersetzen einfach einen neuen Schlüssel eintragen.':'<b style="color:var(--warn)">Noch nicht hinterlegt.</b> Ohne Schlüssel kann die App keine Bilder erzeugen.'} Der Schlüssel wird verschlüsselt in Supabase gespeichert und ist danach nicht mehr auslesbar.</p>
+      <form id="keyForm" class="zeile" autocomplete="off">
+        <label class="feld" for="gkey" style="flex:1 1 260px">API-Schlüssel aus Google AI Studio<input type="password" id="gkey" required minlength="20" placeholder="AIza…"></label>
+        <button class="btn primär" type="submit" style="align-self:flex-end">Speichern</button>
+      </form>
+    </section>
     <section class="karte stapel">
       <h2>Pauschalen je Stufe</h2>
       <p class="leise" style="margin:0">Arbeit, Rückbau, Installation, Fliesen und Nebenarbeiten als grobe Pauschale. Sie fließt in den Kostenrahmen ein.</p>
@@ -477,6 +486,10 @@ async function renderProdukte(){
       </tbody></table></div>
     </section>
   </div>`;
+  document.getElementById("keyForm").onsubmit = e => { e.preventDefault(); lade(async()=>{
+    const { error } = await sb.rpc("bad_setze_gemini_key", { schluessel: document.getElementById("gkey").value });
+    if(error) throw error; renderProdukte();
+  }); };
   app.querySelectorAll("[data-einst]").forEach(i=>i.onchange=()=>lade(async()=>{
     const { error } = await sb.from("bad_einstellungen").update({ [i.dataset.feld]: Number(i.value)||0 }).eq("stufe", i.dataset.einst);
     if(error) throw error; S.einst[i.dataset.einst][i.dataset.feld] = Number(i.value)||0;
